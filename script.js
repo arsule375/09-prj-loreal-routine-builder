@@ -1,3 +1,47 @@
+// Handle Generate Routine button click
+const generateBtn = document.getElementById("generateRoutine");
+if (generateBtn) {
+  generateBtn.addEventListener("click", async () => {
+    if (!selectedProducts.length) {
+      chatWindow.innerHTML =
+        "Please select at least one product to generate a routine.";
+      return;
+    }
+    // Add a message to chat history describing the selected products
+    const productList = selectedProducts
+      .map((p) => `${p.name} (${p.brand})`)
+      .join(", ");
+    const routinePrompt = `Here are the products I have: ${productList}. Please create a personalized skincare or haircare routine using only these products. Explain the order and how to use each one.`;
+    messages.push({ role: "user", content: routinePrompt });
+    renderMessages();
+    messages.push({ role: "assistant", content: "Thinking..." });
+    renderMessages();
+    try {
+      const response = await fetch(
+        "https://loreal-chatbot-info.arsule.workers.dev/",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages }),
+        }
+      );
+      const data = await response.json();
+      messages.pop(); // Remove "Thinking..."
+      let aiReply =
+        data.choices?.[0]?.message?.content ||
+        "Sorry, I couldn't get a response.";
+      messages.push({ role: "assistant", content: aiReply });
+      renderMessages();
+    } catch (err) {
+      messages.pop();
+      messages.push({
+        role: "assistant",
+        content: "Sorry, there was a problem connecting to the server.",
+      });
+      renderMessages();
+    }
+  });
+}
 /* Get references to DOM elements */
 const categoryFilter = document.getElementById("categoryFilter");
 const productsContainer = document.getElementById("productsContainer");
@@ -18,12 +62,65 @@ async function loadProducts() {
   return data.products;
 }
 
-/* Create HTML for displaying product cards */
+// Selected products array, loaded from localStorage if available
+let selectedProducts = JSON.parse(
+  localStorage.getItem("selectedProducts") || "[]"
+);
+
+// Render selected products above the button
+function renderSelectedProducts() {
+  const selectedList = document.getElementById("selectedProductsList");
+  if (!selectedList) return;
+  if (selectedProducts.length === 0) {
+    selectedList.innerHTML =
+      '<div class="placeholder-message">No products selected</div>';
+    return;
+  }
+  selectedList.innerHTML = selectedProducts
+    .map(
+      (product, idx) => `
+        <div class="selected-product">
+          <span>${product.name}</span>
+          <button class="remove-selected" data-idx="${idx}" title="Remove">&times;</button>
+        </div>
+      `
+    )
+    .join("");
+  // Add remove event listeners
+  document.querySelectorAll(".remove-selected").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const idx = parseInt(e.target.getAttribute("data-idx"));
+      selectedProducts.splice(idx, 1);
+      localStorage.setItem(
+        "selectedProducts",
+        JSON.stringify(selectedProducts)
+      );
+      renderSelectedProducts();
+      // Also update product card highlights
+      updateProductCardHighlights();
+    });
+  });
+}
+
+// Update product card highlights based on selection
+function updateProductCardHighlights() {
+  document.querySelectorAll(".product-card").forEach((card) => {
+    // const pid = card.getAttribute("data-id");
+    const pid = Number(card.getAttribute("data-id"));
+    if (selectedProducts.some((p) => p.id === pid)) {
+      card.classList.add("selected");
+    } else {
+      card.classList.remove("selected");
+    }
+  });
+}
+
+// Create HTML for displaying product cards with selection logic
 function displayProducts(products) {
   productsContainer.innerHTML = products
     .map(
       (product) => `
-    <div class="product-card">
+    <div class="product-card" data-id="${product.id}">
       <img src="${product.image}" alt="${product.name}">
       <div class="product-info">
         <h3>${product.name}</h3>
@@ -33,20 +130,48 @@ function displayProducts(products) {
   `
     )
     .join("");
+
+  // Add click event to each product card
+  document.querySelectorAll(".product-card").forEach((card) => {
+    card.addEventListener("click", () => {
+      const pid = Number(card.getAttribute("data-id"));
+      // Find product by id
+      loadProducts().then((allProducts) => {
+        const product = allProducts.find((p) => p.id === pid);
+        if (!product) return;
+        const idx = selectedProducts.findIndex((p) => p.id === pid);
+        if (idx === -1) {
+          selectedProducts.push(product);
+        } else {
+          selectedProducts.splice(idx, 1);
+        }
+        localStorage.setItem(
+          "selectedProducts",
+          JSON.stringify(selectedProducts)
+        );
+        renderSelectedProducts();
+        updateProductCardHighlights();
+      });
+    });
+  });
+  updateProductCardHighlights();
 }
 
 /* Filter and display products when category changes */
+
 categoryFilter.addEventListener("change", async (e) => {
   const products = await loadProducts();
   const selectedCategory = e.target.value;
-
-  /* filter() creates a new array containing only products 
-     where the category matches what the user selected */
   const filteredProducts = products.filter(
     (product) => product.category === selectedCategory
   );
-
   displayProducts(filteredProducts);
+});
+
+// On page load, render selected products and highlights
+window.addEventListener("DOMContentLoaded", () => {
+  renderSelectedProducts();
+  updateProductCardHighlights();
 });
 
 /* Chat form submission handler - connects to OpenAI API */

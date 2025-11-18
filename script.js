@@ -125,11 +125,78 @@ function displayProducts(products) {
       <div class="product-info">
         <h3>${product.name}</h3>
         <p>${product.brand}</p>
+        <button class="desc-toggle-btn" aria-expanded="false" aria-controls="desc-${product.id}">Show Description</button>
+      </div>
+      <div class="product-desc-overlay" id="desc-${product.id}" hidden>
+        <p>${product.description}</p>
       </div>
     </div>
   `
     )
     .join("");
+
+  // Add toggle logic for description
+  document.querySelectorAll(".desc-toggle-btn").forEach((btn) => {
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      const overlay = btn
+        .closest(".product-card")
+        .querySelector(".product-desc-overlay");
+      const isOpen = !overlay.hasAttribute("hidden");
+      if (isOpen) {
+        overlay.setAttribute("hidden", "");
+        btn.textContent = "Show Description";
+        btn.setAttribute("aria-expanded", "false");
+      } else {
+        overlay.removeAttribute("hidden");
+        btn.textContent = "Hide Description";
+        btn.setAttribute("aria-expanded", "true");
+      }
+    });
+  });
+  // Add CSS for product description toggle if not present
+  function addProductDescToggleStyles() {
+    if (document.getElementById("product-desc-toggle-style")) return;
+    const style = document.createElement("style");
+    style.id = "product-desc-toggle-style";
+    style.textContent = `
+      .product-card { position: relative; cursor: pointer; }
+      .desc-toggle-btn {
+        margin-top: 8px;
+        background: #222;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        padding: 4px 10px;
+        font-size: 0.95em;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .desc-toggle-btn[aria-expanded="true"] {
+        background: #444;
+      }
+      .product-desc-overlay {
+        position: absolute;
+        left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.92);
+        color: #fff;
+        padding: 12px;
+        font-size: 0.95em;
+        border-radius: 0 0 8px 8px;
+        z-index: 2;
+        max-height: 60%;
+        overflow-y: auto;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      }
+      .product-desc-overlay[hidden] {
+        display: none;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Ensure toggle styles are present on page load
+  window.addEventListener("DOMContentLoaded", addProductDescToggleStyles);
 
   // Add click event to each product card
   document.querySelectorAll(".product-card").forEach((card) => {

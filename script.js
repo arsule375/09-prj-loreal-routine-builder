@@ -49,13 +49,6 @@ categoryFilter.addEventListener("change", async (e) => {
   displayProducts(filteredProducts);
 });
 
-/* Chat form submission handler - placeholder for OpenAI integration */
-<<<<<<< HEAD
-chatForm.addEventListener("submit", (e) => {
-  e.preventDefault();
-
-  chatWindow.innerHTML = "Connect to the OpenAI API for a response!";
-=======
 /* Chat form submission handler - connects to OpenAI API */
 
 // Store chat history
@@ -123,5 +116,4 @@ chatForm.addEventListener("submit", async (e) => {
   }
   // Clear the input field
   document.getElementById("userInput").value = "";
->>>>>>> 27aa8cf (secure ai stuff)
 });
